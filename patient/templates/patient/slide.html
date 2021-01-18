@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="/static/favicon.ico" type="image/gif" sizes="16x16">
+    <title>Patient</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    <link rel="stylesheet" href="/static/stylesheets/roundslider.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css" />
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/slick.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/slick-theme.css"/>
+    <link rel="stylesheet" href="/static/stylesheets/style.css">
+    
+
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+
+
+
+    <script src="/static/javascripts/openseadragon.min.js"></script>
+    <script src="/static/javascripts/openseadragon-scalebar.js"></script>
+
+
+    <script src="/static/javascripts/canvas-toBlob.js"></script>
+    <script src="/static/javascripts/FileSaver.js"></script>
+    <script defer src="/static/javascripts/fontawesome.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+    <script src="/static/javascripts/roundslider.min.js"></script>
+    <script src="/static/javascripts/html2canvas.min.js"></script>
+    <script src="/static/javascripts/canvas2image.js"></script>
+    <script src="/static/javascripts/paper-full.js"></script>
+    <script src="/static/javascripts/openseadragon-paperjs-overlay.js"></script>
+    <script src="/static/javascripts/jquery.fullscreen.js"></script>
+    <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
+
+    <script>
+        const image = "/patient/{{Slide.pk}}.dzi";
+        const slideId = '{{Slide.pk}}';
+    </script>
+    <script src="/static/javascripts/app.js"></script>
+</head>
+
+<body>
+    <div id="page">
+        
+        <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="https://pathhub.uk/">
+                    <img id="pathub-logo" width="100" height="53" src="/static/images/logo.png">
+                </a>
+            </div>
+
+            <div id="viewer-navbar" class="navbar-menu">
+                <div class="navbar-start">
+                    <div class="navbar-item">
+                        <button id="home-btn" title="Fit to Screen" class="button is-rounded"> <i
+                                class="fas fa-home"></i> </button>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="navbar-item">
+                        <button id="zoomin-btn" title="Zoom in" class="button is-rounded"> <i
+                                class="fas fa-search-plus"></i> </button>
+                    </div>
+
+                    <div class="navbar-item">
+                        <button id="zoomout-btn" title="Zoom out" class="button is-rounded"> <i
+                                class="fas fa-search-minus"></i> </button>
+                    </div>
+
+                    <div class="navbar-item">
+                        <div id="zoom-value-container">
+                            <div class="columns">
+                                <div class="column is-1" id="zoom-value-icon-container">
+                                    <i class="fas fa-search fa-sm"></i>
+                                </div>
+                                <div class="column">
+                                    <div id="zoom-value-display">
+                                        50x
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="navbar-item zoom-button-container">
+                        <button value="2" title="Zoom in 2x" class="button zoom-button"
+                            style="border-top: none; background: url(/static/images/2x.png); "></button>
+                    </div>
+
+                    <div class="navbar-item zoom-button-container">
+                        <button value="5" title="Zoom in 5x" class="button zoom-button"
+                            style="border-top: none; background: url(/static/images/5x.png); "></button>
+                    </div>
+
+                    <div class="navbar-item zoom-button-container">
+                        <button value="10" title="Zoom in 10x" class="button zoom-button"
+                            style="border-top: none; background: url(/static/images/10x.png); "></button>
+                    </div>
+
+                    <div class="navbar-item zoom-button-container">
+                        <button value="20" title="Zoom in 20x" class="button zoom-button"
+                            style="border-top: none; background: url(/static/images/20x.png); "></button>
+                    </div>
+
+                    <div class="navbar-item zoom-button-container">
+                        <button value="40" title="Zoom in 40x" class="button zoom-button"
+                            style="border-top: none; background: url(/static/images/40x.png); "></button>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div id="rotation-selector-dropdown" class="navbar-item has-dropdown">
+                        <button id="rotation-dropdown-button" title="Rotate" class="button is-rounded"> <i
+                                class="fas fa-sync"></i> </button>
+                        <div class="navbar-dropdown">
+                            <div class="navbar-item">
+                                <div id="rotation-selector" class="rotation-selector-class"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="navbar-item rotate-preset-container">
+                        <button id="btn-rotate-preset-1" title="Rotate to 0" value="0" class="button is-rounded">
+                            <strong>0&#176;</strong></button>
+                    </div>
+
+                    <div class="navbar-item rotate-preset-container">
+                        <button id="btn-rotate-preset-2" title="Rotate to 90" value="90" class="button is-rounded">
+                            <strong> 90&#176; </strong></button>
+                    </div>
+
+                    <div class="navbar-item rotate-preset-container">
+                        <button id="btn-rotate-preset-3" title="Rotate to 180" value="180" class="button is-rounded">
+                            <strong> 180&#176; </strong></button>
+                    </div>
+
+                    <div class="separator"></div>
+
+                    <div class="navbar-item">
+                        <button id="screenshot-btn" title="Take Screenshot" class="button is-rounded"> <i
+                                class="fas fa-camera"></i> </button>
+                    </div>
+
+                    <div id="draw-menu-dropdown" class="navbar-item has-dropdown">
+                        <button id="draw-button" title="Annotations Menu" class="button is-rounded"> <i
+                                class="fas fa-pen"></i> </button>
+                        <div class="navbar-dropdown">
+                            <div class="navbar-item">
+                                <div id="draw-menu">
+                                    <label class="label">Select Tool</label>
+                                    <div class="columns" id="select-tool-container">
+                                        
+                                        <div class="column" style="padding-left: 2px;">
+                                            <button id="rect-button" title="Rectangle Annotation"
+                                                class="button is-rounded">
+                                                <svg width="25" height="25">
+                                                    <rect width="25" height="25"
+                                                        style="stroke-width: 4; fill: rgb(255, 255, 255); stroke: rgb(0, 0, 0)">
+                                                    </rect>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="column">
+                                            <button id="circle-button" title="Circle Annotation"
+                                                class="button is-rounded"> <span class="circle-annotation"></span> </button>
+                                        </div>
+                                        
+                                        <div class="column">
+                                            <button id="circle-button-20" title="Circle Annotation"
+                                                class="button is-rounded"> <span class="circle-annotation" style="text-align: center; font-size: 0.7rem; padding-top: 3px;">20x</span> </button>
+                                        </div>
+                                        <div class="column">
+                                            <button id="circle-button-40" title="Circle Annotation"
+                                                class="button is-rounded"> <span class="circle-annotation" style="text-align: center; font-size: 0.7rem; padding-top: 3px;">40x</span> </button>
+                                        </div>
+                                    </div>
+                                    <div class="horizontal-divider"></div>
+                                    <div class="columns" id="select-tool-settings">
+                                        <div class="column is-4">
+                                            <label class="label light-label">Size</label>
+                                            <input id="stroke-width-input" value="4" type="number"
+                                                class="input is-rounded" width="30px" min="1" max="12">
+
+                                        </div>
+                                        <div class="column">
+                                            <label class="label light-label">Color</label>
+                                            <div id="annotation-border-picker" class="color-picker"></div>
+                                        </div>
+                                        <div class="column">
+                                            <div id="color-palette-container">
+                                                <div class="columns">
+                                                    <div class="column"> <div class="color-palette" title="Black" style="background-color: black;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="White" style="background-color: white; border: 1px solid black;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Gray" style="background-color: gray;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Pink" style="background-color: pink;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Violet" style="background-color: violet;" ></div> </div>
+                                                </div>
+                                                <div class="columns">
+                                                    <div class="column"> <div class="color-palette" title="Red" style="background-color: red;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Orange" style="background-color: orange;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Yellow" style="background-color: yellow;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Green" style="background-color: green;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Blue" style="background-color: blue;" ></div> </div>
+                                                </div>
+                                                <div class="columns">
+                                                    <div class="column"> <div class="color-palette" title="Purple" style="background-color: purple;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Brown" style="background-color: brown;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Magenta" style="background-color: magenta;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Tan" style="background-color: tan;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Cyan" style="background-color: cyan;" ></div> </div>
+                                                </div>
+                                                <div class="columns">
+                                                    <div class="column"> <div class="color-palette" title="Olive" style="background-color: olive;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Maroon" style="background-color: maroon;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Navy" style="background-color: navy;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Aquamarine" style="background-color: aquamarine;" ></div> </div>
+                                                    <div class="column"> <div class="color-palette" title="Turquoise" style="background-color: turquoise;" ></div> </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="navbar-item">
+                        <button id="line-button" title="Measure Tool" class="button is-rounded" style="background: url('/static/images/measurement-button.png') center no-repeat">
+                            
+                        </button>
+                    </div>
+
+                    <div class="navbar-item">
+                        <button id="annotation-hide-button" title="Hide Annotation" class="button is-rounded"> <i
+                                class="far fa-eye"></i> </button>
+                    </div>
+                    
+                    <div class="navbar-item">
+                        <button id="navigator-hide-button" title="Hide Navigator" class="button is-rounded"><i class="far fa-compass fa-lg"></i></button>
+                    </div>
+                    
+                    <div class="navbar-item">
+                        <button id="stats-button" title="Show Stats" class="button is-rounded" style="background: url('/static/images/stats-button.png') center no-repeat"></button>
+                    </div>
+                    <div class="navbar-item">
+                        <button id="fullscreen-btn" title="full-screen" class="button is-rounded"> <i
+                                class="fas fa-expand-arrows-alt"></i> </button>
+                    </div>
+                    <div id="open-slide-dropdown" class="navbar-item has-dropdown ">
+                        <button id="open-slide-button" title="Open Slide" class="button is-rounded"> <i
+                                class="fas fa-folder-open"></i> </button>
+                        <div class="navbar-dropdown">
+                            <div class="navbar-item">
+                                <div>
+                                    <label class="label">Sync View</label>
+                                    <div class="slot-container">
+                                        <label>Slot 1</label>
+                                        <div id="slot-1" class="slot is-selected"></div>
+                                    </div>
+
+                                    <div class="slot-container">
+                                        <label>Slot 2</label>
+                                        <div class="is-flex" style="align-items: center;">
+                                            <div id="slot-2" class="slot text-light">Add Slide</div>
+                                            <a id="slot-delete-2" class="delete slot-delete"></a>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="slot-container">
+                                        <label>Slot 3</label>
+                                        <div class="is-flex" style="align-items: center;">
+                                            <div id="slot-3" class="slot text-light">Add Slide</div>
+                                            <a id="slot-delete-3" class="delete slot-delete"></a>
+                                        </div>
+                                    </div>
+
+                                    <div class="slot-container">
+                                        <label>Slot 4</label>
+                                        <div class="is-flex" style="align-items: center;">
+                                            <div id="slot-4" class="slot text-light">Add Slide</div>
+                                            <a id="slot-delete-4" class="delete slot-delete"></a>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="navbar-item">
+                        <button id="sync-lock-button" title="Lock Sync" class="button is-rounded"> <i
+                                class="fas fa-lock-open"></i> </button>
+                    </div>
+                </div>
+                {% if back_url is not None %}
+                <div class="navbar-end">
+                    <a href="{{back_url}}" class="navbar-item">
+                        <strong>Back</strong>
+                    </a>
+                </div>
+                {% endif %}
+                
+
+            </div>
+        </nav>
+
+        <div id="viewer-container" style="width: 100%; height: 80%;">
+
+        </div>
+        
+        <div id="slide-tray-container">
+            <div id="slide-tray-with-buttons">
+                <div id="slide-tray-button-container">
+                    <button class="slide-tray-button" id="slide-tray-large-button"></button>
+                    <button class="slide-tray-button" id="slide-tray-med-button"></button>
+                    <button class="slide-tray-button" id="slide-tray-small-button"></button>
+                    <button id="slide-tray-hide-button"><i class="fas fa-caret-down fa-lg"></i></button>
+                    <button id="slide-tray-show-button"><i class="fas fa-caret-up fa-lg"></i></button>
+                </div>
+                <div id="slide-tray">
+                    
+                </div>
+            </div>
+        </div>
+
+
+        <div class="modal" id="annotation-modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title" id="annotation-modal-title">Annotation Setting</p>
+                    <button class="delete annotation-modal-close" arai-label="close"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="container">
+                        <label for="annotation-text" class="label">Annotation Text</label>
+                        <textarea name="annotation-text" id="annotation-text" cols="15" rows="5"
+                            class="textarea"></textarea>
+                    </div>
+                </section>
+                <footer class="modal-card-foot">
+                    <button class="button is-success" id="annotation-save-btn">Save</button>
+                    <button class="button annotation-modal-close">Cancel</button>
+                </footer>
+            </div>
+        </div>
+
+
+        <div class="modal" id="open-slide-modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title" id="open-slide-title">Select Slide</p>
+                    <button class="delete annotation-modal-close" arai-label="close"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="container" id='slide-selector-container'>
+
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        
+        <div class="modal" id="new-slide-modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title" id="new-slide-title">Open Slide In</p>
+                    <button class="delete new-slide-modal-close" arai-label="close"></button>
+                </header>
+                <section class="modal-card-body">
+                    <div class="columns">
+                        <!-- <div class="column"> <button onclick="" id="open-new-slide-new-button" class="button is-info">New Window</button></div>
+                        <div class="column"> <button onclick="" id="open-new-slide-same-button" class="button is-info">Same Window</button></div>
+                        <div class="column"> <button onclick="" id="open-new-slide-parallel-button" class="button is-info">Parallel View</button> </div> -->
+                        <div class="column">
+                            <div class="open-slide-button-container" id="open-new-slide-new-button">
+                                <img src="/static/images/new_window.png" alt="" srcset="">
+                                <label for="">New Window</label>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="open-slide-button-container" id="open-new-slide-same-button">
+                                <img src="/static/images/same_window.png" alt="" srcset="">
+                                <label for="">Same Window</label>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="open-slide-button-container" id="open-new-slide-parallel-button">
+                                <img src="/static/images/parallel_view.png" alt="" srcset="">
+                                <label for="">Parallel View</label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+
+        
+        <div class="modal" id="stats-modal">
+            <div class="modal-background"></div>
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title" id="stats-title">Slide Properties</p>
+                    <button class="delete stats-modal-close" arai-label="close"></button>
+                </header>
+                <section class="modal-card-body">
+                    <h4 class="title is-5">Optical Parameters</h4>
+                    <div class="columns">
+                        <div class="column is-6">
+                            <p>Property</p>
+                            <p>Property</p>
+                            <p>Property</p>
+                            <p>Property</p>
+                            <p>Property</p>
+                        </div>
+                        <div class="column is-4">
+                            <p>Value</p>
+                            <p>Value</p>
+                            <p>Value</p>
+                            <p>Value</p>
+                            <p>Value</p>
+                        </div>
+                    </div>
+                    <h4 class="title is-5" >Scan Information</h4>
+                    <div class="columns">
+                        <div class="column is-6">
+                            <p>Property</p>
+                            <p>Property</p>
+                            <p>Property</p>
+                        </div>
+                        <div class="column is-4">
+                            <p>Value</p>
+                            <p>Value</p>
+                            <p>Value</p>
+                        </div>
+                    </div>
+                    <h4 class="title is-5" >Image parameters</h4>
+                    <div class="columns">
+                        <div class="column is-6">
+                            <p>Property</p>
+                            <p>Property</p>
+                        </div>
+                        <div class="column is-4">
+                            <p>Value</p>
+                            <p>Value</p>
+                        </div>
+                    </div>
+                    <h4 class="title is-5" >Optical Parameters</h4>
+                    <div class="columns">
+                        <div class="column is-6">
+                            <p>Property</p>
+                        </div>
+                        <div class="column is-4">
+                            <p>Value</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+
+
+        <div id="loading-modal" class="modal">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+                <p class="image">
+                    <img style="width: 67px; height: 67px;" src="/static/images/loading.gif" alt="Loading...">
+                </p>
+            </div>
+            <button class="modal-close is-large" aria-label="close"></button>
+        </div>
+
+        <div class="modal" id="delete-confirm">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+                <div class="card">
+                    <div class="card-content">
+                        <p class="is-size-5">
+                            Delete Annotation?
+                        </p>
+                    </div>
+                    <footer class="card-footer">
+                        <p class="card-footer-item">
+                            <button id="delete-button" class="button is-danger">Delete</button>
+                        </p>
+                        <p class="card-footer-item">
+                            <button id="cancel-button" class="button">Cancel</button>
+                        </p>
+                    </footer>
+                </div>
+            </div>
+            <button class="modal-close is-large" aria-label="close"></button>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,5 @@
+#iframe_dialog{display:none;}
+#iframe_dialog textarea{resize: none;}
+.no-close .ui-dialog-titlebar-close {
+    display: none;
+}
