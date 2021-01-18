@@ -70,8 +70,8 @@ def slide(request, slide_id):
         if back_url is not None:
             if re.match(regex, back_url) is None:
                 back_url = None
-    
-    return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url})
+
+    return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations})
 
 
 def load_slide(slide_id, slidefile):

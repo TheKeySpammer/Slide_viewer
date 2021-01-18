@@ -35,6 +35,7 @@ class Frcpathp2surgicalcourse(models.Model):
     LabelUrlPath = models.ImageField(upload_to= UploadToPathAndRename(os.path.join(settings.STATICFILES_DIRS[0],'labels')),default=os.path.join(settings.STATICFILES_DIRS[0],'labels','placeholder.png'), max_length=500)
     Group = models.IntegerField(default=0)
     GroupName = models.CharField(max_length=100, default="FRCPath Default Group")
+    Annotations = models.BooleanField(default=False)
 
 
     class Meta:

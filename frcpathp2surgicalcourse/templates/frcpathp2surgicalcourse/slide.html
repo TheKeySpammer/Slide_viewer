@@ -147,7 +147,7 @@
                         <button id="screenshot-btn" title="Take Screenshot" class="button is-rounded"> <i
                                 class="fas fa-camera"></i> </button>
                     </div>
-
+                    {% if annotations %} 
                     <div id="draw-menu-dropdown" class="navbar-item has-dropdown">
                         <button id="draw-button" title="Annotations Menu" class="button is-rounded"> <i
                                 class="fas fa-pen"></i> </button>
@@ -236,6 +236,7 @@
                             
                         </button>
                     </div>
+                    {% endif %}
 
                     <div class="navbar-item">
                         <button id="annotation-hide-button" title="Hide Annotation" class="button is-rounded"> <i
