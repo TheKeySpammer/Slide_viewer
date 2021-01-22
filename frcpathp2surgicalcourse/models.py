@@ -23,8 +23,7 @@ class UploadToPathAndRename(object):
 
 
 class Frcpathp2surgicalcourse(models.Model):
-    SlideType_choices = (
-        (2, 'openslide'),)
+    SlideType_choices = ((1, 'DICOM'), (2, 'openslide'))
     Name = models.CharField(max_length=50)
     ScannedBy = models.CharField(max_length=50, blank=True)
     ScannedDate = models.DateField(blank=True)

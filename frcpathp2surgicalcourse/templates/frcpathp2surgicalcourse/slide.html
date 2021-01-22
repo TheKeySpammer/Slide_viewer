@@ -36,11 +36,18 @@
     <script src="/static/javascripts/openseadragon-paperjs-overlay.js"></script>
     <script src="/static/javascripts/jquery.fullscreen.js"></script>
     <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
-
+    {% if Slide.SlideType == 1 %}
+    <script>
+        const image = "/static/dzi/Frcpathp2surgicalcourse/{{Slide.pk}}.dzi";
+        const slideId = '{{Slide.pk}}';
+    </script>
+    {% endif %}
+    {% if Slide.SlideType == 2 %}
     <script>
         const image = "/frcpathp2surgicalcourse/{{Slide.pk}}.dzi";
         const slideId = '{{Slide.pk}}';
     </script>
+    {% endif %}
     <script src="/static/javascripts/app.js"></script>
 </head>
 
