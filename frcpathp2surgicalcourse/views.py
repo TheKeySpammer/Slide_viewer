@@ -351,12 +351,19 @@ def get_property(request, slide_id):
         s = Frcpathp2surgicalcourse.objects.get(pk=slide_id)
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    return JsonResponse({
-        'status': 'success',
-        'data': dict(slide.properties)
-    })
+
+    if s.SlideType == 2:
+        file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+        slide = OpenSlide(file)
+        return JsonResponse({
+            'status': 'success',
+            'data': dict(slide.properties)
+        })
+    else:
+        return JsonResponse({
+            'status': 'success',
+            'data': dict()
+        })
 
 
     

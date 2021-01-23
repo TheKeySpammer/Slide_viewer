@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css" />
     <link rel="stylesheet" type="text/css" href="/static/stylesheets/slick.css"/>
     <link rel="stylesheet" type="text/css" href="/static/stylesheets/slick-theme.css"/>
+    <link rel="stylesheet" type="text/css" href="/static/stylesheets/bulma-slider.min.css"/>
     <link rel="stylesheet" href="/static/stylesheets/style.css">
     
 
@@ -31,10 +32,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
     <script src="/static/javascripts/roundslider.min.js"></script>
     <script src="/static/javascripts/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
     <script src="/static/javascripts/canvas2image.js"></script>
     <script src="/static/javascripts/paper-full.js"></script>
     <script src="/static/javascripts/openseadragon-paperjs-overlay.js"></script>
+    <script src="/static/javascripts/openseadragon-filtering.js"></script>
     <script src="/static/javascripts/jquery.fullscreen.js"></script>
+    <script src="/static/javascripts/bulma-slider.js"></script>
     <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
     {% if Slide.SlideType == 1 %}
     <script>
@@ -307,6 +311,11 @@
                         <button id="sync-lock-button" title="Lock Sync" class="button is-rounded"> <i
                                 class="fas fa-lock-open"></i> </button>
                     </div>
+
+                    <div class="navbar-item">
+                        <button id="filter-button" title="Filter" class="button is-rounded"> <i
+                                class="fas fa-palette"></i> </button>
+                    </div>
                 </div>
                 {% if back_url is not None %}
                 <div class="navbar-end">
@@ -480,7 +489,63 @@
             </div>
         </div>
 
-
+        <div class="draggle-menu" style="display: none;">
+            <div class="draggle-menu-header has-text-centered">
+                <span><strong>Filters</strong></span>
+                <button class="delete" aria-label="close"></button>
+            </div>
+            <div class="draggle-menu-body">
+                <p> <strong>Brightness</strong></p>
+                <div class="columns">
+                    <div class="column" style="padding-right: 0px">
+                        <input id="brightness-slider" class="slider has-output-tooltip is-fullwidth" min="-150" max="150" value="0" step="5" type="range">
+                        <output style="top: 100px !important;" for="brightness-slider">0</output>
+                    </div>
+                    <div class="column is-2">
+                        <button class="undo-button-brightness button is-rounded" style="padding-top: 0px; padding-left: 0px;">
+                            <i class="fas fa-undo fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <p><strong>Colors</strong></p>
+                <p>Red</p>
+                <div class="columns" style="margin-bottom: 0;">
+                    <div class="column" style="padding-right: 0px; padding-bottom: 0;">
+                        <input id="red-slider" class="slider is-danger has-output-tooltip is-fullwidth" min="0" max="100" value="0" step="5" type="range">
+                        <output style="top: 208px !important;" for="red-slider">0</output>
+                    </div>
+                    <div class="column is-2">
+                        <button class="undo-button-red button is-rounded" style="padding-top: 0px; padding-left: 0px;">
+                            <i class="fas fa-undo fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <p>Green</p>
+                <div class="columns" style="margin-bottom: 0;">
+                    <div class="column" style="padding-right: 0px; padding-bottom: 0;">
+                        <input id="green-slider" class="slider is-success has-output-tooltip is-fullwidth" min="0" max="100" value="0" step="5" type="range">
+                        <output style="top: 285px !important;" for="green-slider">0</output>
+                    </div>
+                    <div class="column is-2">
+                        <button class="undo-button-green button is-rounded" style="padding-top: 0px; padding-left: 0px;">
+                            <i class="fas fa-undo fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+                <p>Blue</p>
+                <div class="columns" style="margin-bottom: 0;">
+                    <div class="column" style="padding-right: 0px; padding-bottom: 0;">
+                        <input id="blue-slider" class="slider is-link has-output-tooltip is-fullwidth" min="0" max="100" value="0" step="5" type="range">
+                        <output style="top: 360px !important;" for="blue-slider">0</output>
+                    </div>
+                    <div class="column is-2">
+                        <button class="undo-button-blue button is-rounded" style="padding-top: 0px; padding-left: 0px;">
+                            <i class="fas fa-undo fa-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div id="loading-modal" class="modal">
             <div class="modal-background"></div>
