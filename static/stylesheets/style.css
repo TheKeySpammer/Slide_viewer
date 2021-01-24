@@ -724,7 +724,11 @@ label.label.light-label {
     padding: 10px 5px 5px 10px;
 }
 
-#brightness-slider {
+button:active {
+    border: none;
+}
+
+#brightness-slider { 
     margin-top: 5px;
 }
 

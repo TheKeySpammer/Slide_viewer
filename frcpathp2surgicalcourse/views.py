@@ -13,11 +13,12 @@ from PIL import Image
 from .models import Frcpathp2surgicalcourse, Annotation
 import base64
 import re
-from virtualcases.dicom_deepzoom import ImageCreator
+from virtualcases.dicom_deepzoom import ImageCreator, get_PIL_image
 import os
+import pydicom
 
 OUTPUT_PATH = os.path.join(settings.BASE_DIR, 'static/dzi/Frcpathp2surgicalcourse/')
-
+MAX_THUMBNAIL_SIZE = 200, 200
 
 regex = re.compile(
         r'^(?:http|ftp)s?://' # http:// or https://
@@ -167,34 +168,63 @@ def gen_thumbnail_url(request, slide_id):
         s = Frcpathp2surgicalcourse.objects.get(pk=slide_id)
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    print(slide.associated_images.keys())
-    thumbnail = slide.get_thumbnail((800, 600))
-    filename = str(s.UrlPath).split('/')[-1]
-    fWithoutExt = filename.split('.')
-    fWithoutExt.pop()
-    fWithoutExt = ''.join(fWithoutExt)
-    thumbnailName = fWithoutExt+'.thumbnail'
-    dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
-    thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
-    return JsonResponse( {
-        'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
-    })
+    label_name = str(s.LabelUrlPath).split('/')[-1]
+    if label_name != 'placeholder.png':
+        return JsonResponse( {
+        'thumbnail': request.build_absolute_uri(str(s.LabelUrlPath)),
+        })
+    else:
+        if s.SlideType == 1:
+            ds = pydicom.dcmread(str(s.UrlPath))
+            thumbnail = get_PIL_image(ds)
+            response = HttpResponse(content_type='image/png')
+            thumbnail.thumbnail(MAX_THUMBNAIL_SIZE)
+            filename = str(s.UrlPath).split('/')[-1]
+            fWithoutExt = filename.split('.')
+            fWithoutExt.pop()
+            fWithoutExt = ''.join(fWithoutExt)
+            thumbnailName = fWithoutExt+'.thumbnail'
+            dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
+            thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
+            return JsonResponse({
+                'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
+            })
+        else:
+            file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+            slide = OpenSlide(file)
+            thumbnail = slide.get_thumbnail((800, 600))
+            filename = str(s.UrlPath).split('/')[-1]
+            fWithoutExt = filename.split('.')
+            fWithoutExt.pop()
+            fWithoutExt = ''.join(fWithoutExt)
+            thumbnailName = fWithoutExt+'.thumbnail'
+            dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
+            thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
+            return JsonResponse({
+                'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
+            })
 
 def gen_label(request, slide_id):
     try:
         s = Frcpathp2surgicalcourse.objects.get(pk=slide_id)
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
-    if s.SlideType == 1:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+    label_name = str(s.LabelUrlPath).split('/')[-1]
+    if label_name != 'placeholder.png':
+        file_path = str(s.LabelUrlPath)
         if path.exists(file_path):
             with open(file_path, 'rb') as fh:
                 response = HttpResponse(fh.read(), content_type="image/*")
                 response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
                 return response
-        raise Http404
+    if s.SlideType == 1:
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
+        response = HttpResponse(content_type='image/png')
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
+        label.save(response, "PNG", optimize=True, quality=95)
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
+        return response
     else:
         file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
         slide = OpenSlide(file)
@@ -233,14 +263,22 @@ def get_thumbnail(request, slide_id):
         s = Frcpathp2surgicalcourse.objects.get(pk=slide_id)
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
-    if s.SlideType == 1:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+    label_name = str(s.LabelUrlPath).split('/')[-1]
+    if label_name != 'placeholder.png':
+        file_path = str(s.LabelUrlPath)
         if path.exists(file_path):
             with open(file_path, 'rb') as fh:
                 response = HttpResponse(fh.read(), content_type="image/*")
                 response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
                 return response
-        raise Http404
+    if s.SlideType == 1:
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
+        response = HttpResponse(content_type='image/png')
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
+        label.save(response, "PNG", optimize=True, quality=95)
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
+        return response
     else:
         file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
         slide = OpenSlide(file)
@@ -287,13 +325,13 @@ def get_barcode(request, slide_id):
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
     if s.SlideType == 1:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
-        if path.exists(file_path):
-            with open(file_path, 'rb') as fh:
-                response = HttpResponse(fh.read(), content_type="image/*")
-                response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
-                return response
-        raise Http404
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
+        response = HttpResponse(content_type='image/png')
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
+        label.save(response, "PNG")
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
+        return response
     else:
         file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
         slide = OpenSlide(file) 

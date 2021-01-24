@@ -409,9 +409,34 @@ $(document).ready(function () {
     });
     
     $(".undo-button-brightness").click(function() {
+        $("#brightness-slider").siblings("output").html(0);
         $("#brightness-slider").val(0);
         updateFilters();
-    })
+    });
+
+    $(".undo-button-red").click(function() {
+        $("#red-slider").siblings("output").html(0);
+        $("#red-slider").val(0);
+        updateFilters();
+    });
+
+    $(".undo-button-green").click(function() {
+        $("#green-slider").siblings("output").html(0);
+        $("#green-slider").val(0);
+        updateFilters();
+    });
+
+    $(".undo-button-blue").click(function() {
+        $("#blue-slider").siblings("output").html(0);
+        $("#blue-slider").val(0);
+        updateFilters();
+    });
+
+    $(".undo-button-strength").click(function() {
+        $("#strength-slider").siblings("output").html(0);
+        $("#strength-slider").val(0);
+        updateFilters();
+    });
 
     function updateFilters() {
         var brightness = $("#brightness-slider").val();
@@ -419,24 +444,28 @@ $(document).ready(function () {
         var red = $("#red-slider").val();
         var green = $("#green-slider").val();
         var blue = $("#blue-slider").val();
-        var strength = 50;
+        var strength = $("#strength-slider").val();
         red = parseInt(red);
         green = parseInt(green);
         blue = parseInt(blue);
+        strength = parseInt(strength);
         viewer.setFilterOptions({
             filters: {
-                processors: [OpenSeadragon.Filters.BRIGHTNESS(brightness),
+                processors: [
+                    OpenSeadragon.Filters.BRIGHTNESS(brightness),
                     function(context, callback) {
                         caman(context.canvas, function() {
                             this.colorize(red, green, blue, strength);
                             this.render(callback);
                         });
-                    }]
+                    }
+                ]
             },
             loadMode: 'sync'
         });
-
     }
+
+
 
     // Scalebar plugin
 
