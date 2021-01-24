@@ -445,6 +445,10 @@ $(document).ready(function () {
         var green = $("#green-slider").val();
         var blue = $("#blue-slider").val();
         var strength = $("#strength-slider").val();
+        var sync = true;
+        if (strength > 0) {
+            sync = false;
+        }
         red = parseInt(red);
         green = parseInt(green);
         blue = parseInt(blue);
@@ -461,7 +465,7 @@ $(document).ready(function () {
                     }
                 ]
             },
-            loadMode: 'sync'
+            loadMode: sync? 'sync': 'async'
         });
     }
 
