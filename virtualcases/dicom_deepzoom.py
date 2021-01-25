@@ -120,7 +120,7 @@ def get_PIL_image(dataset):
             # not sure about this -- PIL source says is 'experimental'
             # and no documentation. Also, should bytes swap depending
             # on endian of file and system??
-            mode = "I;16"
+            mode = "RGB"
         else:
             raise TypeError("Don't know PIL mode for %d BitsAllocated "
                             "and %d SamplesPerPixel" % (bits, samples))
