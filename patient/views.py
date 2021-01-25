@@ -13,7 +13,12 @@ from PIL import Image
 from .models import Patient, Annotation
 import base64
 import re
+from virtualcases.dicom_deepzoom import ImageCreator, get_PIL_image
+import os
+import pydicom
 
+OUTPUT_PATH = os.path.join(settings.BASE_DIR, 'static/dzi/Patient/')
+MAX_THUMBNAIL_SIZE = 200, 200
 
 regex = re.compile(
         r'^(?:http|ftp)s?://' # http:// or https://
@@ -55,9 +60,26 @@ def slide(request, slide_id):
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    
     param = request.GET.get('url')
     back_url = None
+    if s.SlideType == 1:
+        if not os.path.exists(OUTPUT_PATH):
+            os.mkdir(OUTPUT_PATH)
+        
+        if not os.path.exists(OUTPUT_PATH+''+str(slide_id)+'.dzi'):
+            SOURCE = str(s.UrlPath)
+            # Create Deep Zoom Image creator with weird parameters
+            creator = ImageCreator(
+                tile_size=128,
+                tile_overlap=2,
+                tile_format="jpg",
+                image_quality=0.8,
+                resize_filter="bicubic",
+            )
+
+            # Create Deep Zoom image pyramid from source
+            creator.create_dicom(SOURCE, OUTPUT_PATH+''+str(slide_id)+'.dzi')
+
     if param is not None:
         try:
             param_bytes = param.encode('ascii')
@@ -69,8 +91,8 @@ def slide(request, slide_id):
         if back_url is not None:
             if re.match(regex, back_url) is None:
                 back_url = None
-    
-    return render(request, 'patient/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url})
+
+    return render(request, 'Patient/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations})
 
 
 def load_slide(slide_id, slidefile):
@@ -146,64 +168,94 @@ def gen_thumbnail_url(request, slide_id):
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    print(slide.associated_images.keys())
-    thumbnail = slide.get_thumbnail((800, 600))
-    filename = str(s.UrlPath).split('/')[-1]
-    fWithoutExt = filename.split('.')
-    fWithoutExt.pop()
-    fWithoutExt = ''.join(fWithoutExt)
-    thumbnailName = fWithoutExt+'.thumbnail'
-    dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
-    thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
-    return JsonResponse( {
-        'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
-    })
+    label_name = str(s.LabelUrlPath).split('/')[-1]
+    if label_name != 'placeholder.png':
+        return JsonResponse( {
+        'thumbnail': request.build_absolute_uri(str(s.LabelUrlPath)),
+        })
+    else:
+        if s.SlideType == 1:
+            ds = pydicom.dcmread(str(s.UrlPath))
+            thumbnail = get_PIL_image(ds)
+            response = HttpResponse(content_type='image/png')
+            thumbnail.thumbnail(MAX_THUMBNAIL_SIZE)
+            filename = str(s.UrlPath).split('/')[-1]
+            fWithoutExt = filename.split('.')
+            fWithoutExt.pop()
+            fWithoutExt = ''.join(fWithoutExt)
+            thumbnailName = fWithoutExt+'.thumbnail'
+            dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
+            thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
+            return JsonResponse({
+                'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
+            })
+        else:
+            file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+            slide = OpenSlide(file)
+            thumbnail = slide.get_thumbnail((800, 600))
+            filename = str(s.UrlPath).split('/')[-1]
+            fWithoutExt = filename.split('.')
+            fWithoutExt.pop()
+            fWithoutExt = ''.join(fWithoutExt)
+            thumbnailName = fWithoutExt+'.thumbnail'
+            dirPath = settings.STATICFILES_DIRS[0]+'/images/thumbnail'
+            thumbnail.save(dirPath+'/'+thumbnailName, 'JPEG')
+            return JsonResponse({
+                'thumbnail': request.build_absolute_uri('/static/images/thumbnail/')+thumbnailName,
+            })
 
 def gen_label(request, slide_id):
     try:
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    uploaded_url = str(s.LabelUrlPath).split('/')
-    label_name = uploaded_url[-1]
+    label_name = str(s.LabelUrlPath).split('/')[-1]
     if label_name != 'placeholder.png':
-        file_path = s.LabelUrlPath.path
-        with open(file_path, 'rb') as fh:
-            response = HttpResponse(fh.read(), content_type="image/*")
-            response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
-            return response
-    if ('label' in slide.associated_images.keys() and slide.associated_images['label'] != None):
-        response = HttpResponse(content_type='image/png')
-        label = slide.associated_images['label']
-        if (label.size[0] < label.size[1]):
-            label = label.transpose(Image.ROTATE_270)
-        label.save(response, "PNG")
-        response['Content-Disposition'] = 'attachment; filename="label.png"'
-        return response
-    elif (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
-        response = HttpResponse(content_type='image/png')
-        label = slide.associated_images['macro']
-        basewidth = 600
-        wpercent = (basewidth / float(label.size[0]))
-        hsize = int((float(label.size[1]) * float(wpercent)))
-        label = label.resize((basewidth, hsize), Image.ANTIALIAS)
-        if (label.size[0] > label.size[1]):
-            label = label.transpose(Image.ROTATE_270)
-        label.save(response, "PNG")
-        response['Content-Disposition'] = 'attachment; filename="label.png"'
-        return response
-    else:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+        file_path = str(s.LabelUrlPath)
         if path.exists(file_path):
             with open(file_path, 'rb') as fh:
                 response = HttpResponse(fh.read(), content_type="image/*")
                 response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
                 return response
-        raise Http404
+    if s.SlideType == 1:
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
+        response = HttpResponse(content_type='image/png')
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
+        label.save(response, "PNG", optimize=True, quality=95)
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
+        return response
+    else:
+        file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+        slide = OpenSlide(file)
+        if ('label' in slide.associated_images.keys() and slide.associated_images['label'] != None):
+            response = HttpResponse(content_type='image/png')
+            label = slide.associated_images['label']
+            if (label.size[0] < label.size[1]):
+                label = label.transpose(Image.ROTATE_270)
+            label.save(response, "PNG")
+            response['Content-Disposition'] = 'attachment; filename="label.png"'
+            return response
+        elif (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
+            response = HttpResponse(content_type='image/png')
+            label = slide.associated_images['macro']
+            basewidth = 600
+            wpercent = (basewidth / float(label.size[0]))
+            hsize = int((float(label.size[1]) * float(wpercent)))
+            label = label.resize((basewidth, hsize), Image.ANTIALIAS)
+            if (label.size[0] > label.size[1]):
+                label = label.transpose(Image.ROTATE_270)
+            label.save(response, "PNG")
+            response['Content-Disposition'] = 'attachment; filename="label.png"'
+            return response
+        else:
+            file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+            if path.exists(file_path):
+                with open(file_path, 'rb') as fh:
+                    response = HttpResponse(fh.read(), content_type="image/*")
+                    response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
+                    return response
+            raise Http404
 
 
 def get_thumbnail(request, slide_id):
@@ -211,85 +263,111 @@ def get_thumbnail(request, slide_id):
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    if (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
-        response = HttpResponse(content_type='image/png')
-        label = slide.associated_images['macro']
-        if (label.size[0] > label.size[1]):
-            label = label.transpose(Image.ROTATE_270)
-        basewidth = 200
-        wpercent = (basewidth / float(label.size[0]))
-        hsize = int((float(label.size[1]) * float(wpercent)))
-        label = label.resize((basewidth, hsize), Image.ANTIALIAS)
-        if (label.size[1] > 620):
-            label = label.crop((0, 120, label.size[0], label.size[1]))
-        
-        if (('label' in slide.associated_images.keys() and slide.associated_images['label'] != None)):
-            barcode = slide.associated_images['label']
-            if (barcode.size[0] < barcode.size[1]):
-                barcode = barcode.transpose(Image.ROTATE_270)
-            bw = 200
-            wp = (bw / float(barcode.size[0]))
-            hs = int((float(barcode.size[1]) * float(wp)))
-            barcode = barcode.resize((bw, hs), Image.ANTIALIAS)
-            new_image = Image.new('RGB',(200, barcode.size[1] + label.size[1]), (250,250,250))
-            new_image.paste(barcode,(0,0))
-            new_image.paste(label,(0,barcode.size[1]))
-            label = new_image
-
-        label.save(response, "PNG")
-        response['Content-Disposition'] = 'attachment; filename="label.png"'
-        return response
-    else:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+    label_name = str(s.LabelUrlPath).split('/')[-1]
+    if label_name != 'placeholder.png':
+        file_path = str(s.LabelUrlPath)
         if path.exists(file_path):
             with open(file_path, 'rb') as fh:
                 response = HttpResponse(fh.read(), content_type="image/*")
                 response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
                 return response
-        raise Http404
+    if s.SlideType == 1:
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
+        response = HttpResponse(content_type='image/png')
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
+        label.save(response, "PNG", optimize=True, quality=95)
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
+        return response
+    else:
+        file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+        slide = OpenSlide(file)
+        if (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
+            response = HttpResponse(content_type='image/png')
+            label = slide.associated_images['macro']
+            if (label.size[0] > label.size[1]):
+                label = label.transpose(Image.ROTATE_270)
+            basewidth = 200
+            wpercent = (basewidth / float(label.size[0]))
+            hsize = int((float(label.size[1]) * float(wpercent)))
+            label = label.resize((basewidth, hsize), Image.ANTIALIAS)
+            if (label.size[1] > 620):
+                label = label.crop((0, 120, label.size[0], label.size[1]))
+            
+            if (('label' in slide.associated_images.keys() and slide.associated_images['label'] != None)):
+                barcode = slide.associated_images['label']
+                if (barcode.size[0] < barcode.size[1]):
+                    barcode = barcode.transpose(Image.ROTATE_270)
+                bw = 200
+                wp = (bw / float(barcode.size[0]))
+                hs = int((float(barcode.size[1]) * float(wp)))
+                barcode = barcode.resize((bw, hs), Image.ANTIALIAS)
+                new_image = Image.new('RGB',(200, barcode.size[1] + label.size[1]), (250,250,250))
+                new_image.paste(barcode,(0,0))
+                new_image.paste(label,(0,barcode.size[1]))
+                label = new_image
+
+            label.save(response, "PNG")
+            response['Content-Disposition'] = 'attachment; filename="label.png"'
+            return response
+        else:
+            file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+            if path.exists(file_path):
+                with open(file_path, 'rb') as fh:
+                    response = HttpResponse(fh.read(), content_type="image/*")
+                    response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
+                    return response
+            raise Http404
 
 def get_barcode(request, slide_id):
     try:
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    if ('label' in slide.associated_images.keys() and slide.associated_images['label'] != None):
+    if s.SlideType == 1:
+        ds = pydicom.dcmread(str(s.UrlPath))
+        label = get_PIL_image(ds)
         response = HttpResponse(content_type='image/png')
-        label = slide.associated_images['label']
-        if (label.size[0] < label.size[1]):
-            label = label.transpose(Image.ROTATE_270)
-        basewidth = 200
-        wpercent = (basewidth / float(label.size[0]))
-        hsize = int((float(label.size[1]) * float(wpercent)))
-        label = label.resize((basewidth, hsize), Image.ANTIALIAS)
+        label.thumbnail(MAX_THUMBNAIL_SIZE)
         label.save(response, "PNG")
-        response['Content-Disposition'] = 'attachment; filename="barcode.png"'
-        return response
-    elif (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
-        response = HttpResponse(content_type='image/png')
-        label = slide.associated_images['macro']
-        if (label.size[0] > label.size[1]):
-            label = label.transpose(Image.ROTATE_270)
-        basewidth = 200
-        wpercent = (basewidth / float(label.size[0]))
-        hsize = int((float(label.size[1]) * float(wpercent)))
-        label = label.resize((basewidth, hsize), Image.ANTIALIAS)
-        label = label.crop((0, 0, 200, 200))
-        label.save(response, "PNG")
-        response['Content-Disposition'] = 'attachment; filename="barcode.png"'
+        response['Content-Disposition'] = 'attachment; filename="label.png"'
         return response
     else:
-        file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
-        if path.exists(file_path):
-            with open(file_path, 'rb') as fh:
-                response = HttpResponse(fh.read(), content_type="image/*")
-                response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
-                return response
-        raise Http404
+        file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+        slide = OpenSlide(file) 
+        if ('label' in slide.associated_images.keys() and slide.associated_images['label'] != None):
+            response = HttpResponse(content_type='image/png')
+            label = slide.associated_images['label']
+            if (label.size[0] < label.size[1]):
+                label = label.transpose(Image.ROTATE_270)
+            basewidth = 200
+            wpercent = (basewidth / float(label.size[0]))
+            hsize = int((float(label.size[1]) * float(wpercent)))
+            label = label.resize((basewidth, hsize), Image.ANTIALIAS)
+            label.save(response, "PNG")
+            response['Content-Disposition'] = 'attachment; filename="barcode.png"'
+            return response
+        elif (('macro' in slide.associated_images.keys() and slide.associated_images['macro'] != None)):
+            response = HttpResponse(content_type='image/png')
+            label = slide.associated_images['macro']
+            if (label.size[0] > label.size[1]):
+                label = label.transpose(Image.ROTATE_270)
+            basewidth = 200
+            wpercent = (basewidth / float(label.size[0]))
+            hsize = int((float(label.size[1]) * float(wpercent)))
+            label = label.resize((basewidth, hsize), Image.ANTIALIAS)
+            label = label.crop((0, 0, 200, 200))
+            label.save(response, "PNG")
+            response['Content-Disposition'] = 'attachment; filename="barcode.png"'
+            return response
+        else:
+            file_path = settings.STATICFILES_DIRS[0]+'/images/placeholder-image.png'
+            if path.exists(file_path):
+                with open(file_path, 'rb') as fh:
+                    response = HttpResponse(fh.read(), content_type="image/*")
+                    response['Content-Disposition'] = 'inline; filename=' + path.basename(file_path)
+                    return response
+            raise Http404
 
 
 
@@ -311,12 +389,19 @@ def get_property(request, slide_id):
         s = Patient.objects.get(pk=slide_id)
     except Patient.DoesNotExist:
         raise Http404
-    file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
-    slide = OpenSlide(file)
-    return JsonResponse({
-        'status': 'success',
-        'data': dict(slide.properties)
-    })
+
+    if s.SlideType == 2:
+        file = path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath))
+        slide = OpenSlide(file)
+        return JsonResponse({
+            'status': 'success',
+            'data': dict(slide.properties)
+        })
+    else:
+        return JsonResponse({
+            'status': 'success',
+            'data': dict()
+        })
 
 
     
