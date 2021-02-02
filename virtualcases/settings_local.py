@@ -1,1 +1,1 @@
-ADDITIONAL_APPS = ['frcpathp2surgicalcourse','virtualacp','jclinpathtest','liverpooldermpathcourse2020','test1','patient']
+ADDITIONAL_APPS = ['frcpathp2surgicalcourse','virtualacp','jclinpathtest','liverpooldermpathcourse2020','test1','patient', 'alopecia']

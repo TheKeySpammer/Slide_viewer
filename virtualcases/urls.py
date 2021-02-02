@@ -14,10 +14,12 @@ from virtualacp import urls
 from jclinpathtest import urls
 from patient import urls
 from frcpathp2surgicalcourse import urls
+from alopecia import urls
 #Add Custom APP URL Entry
 urlpatterns = [
 	url(r'^$', RedirectView.as_view(url='/admin')),
     path('admin/', admin.site.urls),
+	url(r'^alopecia/', include('alopecia.urls')),
 	url(r'^frcpathp2surgicalcourse/', include('frcpathp2surgicalcourse.urls')),
 	url(r'^patient/', include('patient.urls')),
 	url(r'^jclinpathtest/', include('jclinpathtest.urls')),
