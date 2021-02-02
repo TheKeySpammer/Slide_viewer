@@ -92,7 +92,7 @@ def slide(request, slide_id):
             if re.match(regex, back_url) is None:
                 back_url = None
 
-    return render(request, 'Patient/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations})
+    return render(request, 'patient/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations})
 
 
 def load_slide(slide_id, slidefile):
