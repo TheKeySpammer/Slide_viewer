@@ -40,13 +40,12 @@
     <script src="/static/javascripts/jquery.fullscreen.js"></script>
     <script src="/static/javascripts/bulma-slider.js"></script>
     <script type="text/javascript" src="//cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js"></script>
-    {% if Slide.SlideType == 1 %}
+    {% if cached %}
     <script>
         const image = "/static/dzi/Frcpathp2surgicalcourse/{{Slide.pk}}.dzi";
         const slideId = '{{Slide.pk}}';
     </script>
-    {% endif %}
-    {% if Slide.SlideType == 2 %}
+    {% else %}
     <script>
         const image = "/frcpathp2surgicalcourse/{{Slide.pk}}.dzi";
         const slideId = '{{Slide.pk}}';

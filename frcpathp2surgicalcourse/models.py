@@ -31,7 +31,6 @@ class Frcpathp2surgicalcourse(models.Model):
     GroupName = models.CharField(max_length=100, default="FRCPath Default Group")
     Annotations = models.BooleanField(default=False)
 
-
     class Meta:
         ordering = ['UrlPath']
 
@@ -43,3 +42,9 @@ class Annotation(models.Model):
     Json = models.TextField()
     AnnotationText = models.TextField()
     Type = models.CharField(max_length=10,blank=False)
+
+
+class Activity(models.Model):
+    Slide_Id = models.ForeignKey(Frcpathp2surgicalcourse, on_delete=models.CASCADE)
+    Saved = models.BooleanField(default=False)
+    LastAccessed = models.DateTimeField()

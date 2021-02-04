@@ -1,5 +1,3 @@
-
-
 from io import BytesIO
 from threading import Lock
 from os import path
@@ -18,6 +16,7 @@ import re
 from virtualcases.dicom_deepzoom import ImageCreator, get_PIL_image
 import os
 import pydicom
+import psutil
 
 OUTPUT_PATH = os.path.join(settings.BASE_DIR, 'static/dzi/Alopecia/')
 MAX_THUMBNAIL_SIZE = 200, 200
@@ -58,6 +57,8 @@ class Openslides:
 
 
 def slide(request, slide_id):
+    if psutil.virtual_memory().percent > 87:
+        return render(request, 'server_busy.html')
     try:
         s = Alopecia.objects.get(pk=slide_id)
     except Alopecia.DoesNotExist:

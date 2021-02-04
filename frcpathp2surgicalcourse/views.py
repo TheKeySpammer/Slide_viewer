@@ -10,12 +10,16 @@ from openslide import open_slide
 from openslide import OpenSlide
 from openslide.deepzoom import DeepZoomGenerator
 from PIL import Image
-from .models import Frcpathp2surgicalcourse, Annotation
+from .models import Frcpathp2surgicalcourse, Annotation, Activity
 import base64
 import re
 from virtualcases.dicom_deepzoom import ImageCreator, get_PIL_image
+from virtualcases.openslide_deepzoom import save_dzi
 import os
 import pydicom
+import psutil
+import datetime
+import shutil
 
 OUTPUT_PATH = os.path.join(settings.BASE_DIR, 'static/dzi/Frcpathp2surgicalcourse/')
 MAX_THUMBNAIL_SIZE = 200, 200
@@ -55,17 +59,105 @@ class Openslides:
             return cls._deepzooms[key]
 
 
+def _get_free_space():
+    free_space = psutil.disk_usage('/').free
+    free_space = free_space / (1024*1024*1024)
+    return free_space
+
+def _get_free_ram():
+    return psutil.virtual_memory().percent
+
+def _optimize_disk_space(slide_id=None):
+    # Get current disk space
+    free_space = _get_free_space()
+    # If free spce is less than 20GB try to free up space by deleting 10 least used cached dzi files
+    if free_space < 20:
+        acs = Activity.objects.all().filter(Saved=True).order_by('LastAccessed')
+        delete_count = 10
+        if len(acs) < 5:
+            return
+        if len(acs) < 10:
+            delete_count = 5
+        if len(acs) < 15:
+            delete_count = 8
+        
+        for i in range(delete_count):
+            ac = acs[i]
+            sd = ac.Slide_Id
+            ac.Saved = False
+            ac.save()
+            if sd == slide_id:
+                continue
+            dzi_file = os.path.join(OUTPUT_PATH, str(sd)+'.dzi')
+            dzi_folder = os.path.join(OUTPUT_PATH, str(sd)+'_files')
+            if os.path.exists(dzi_folder):
+                shutil.rmtree(dzi_folder, ignore_errors=True)
+            if os.path.exists(dzi_file):
+                os.remove(dzi_file)
+            
+
+def loading_slide(request, slide_id):
+    pass
+
 def slide(request, slide_id):
+    # Check if slide exists
     try:
         s = Frcpathp2surgicalcourse.objects.get(pk=slide_id)
     except Frcpathp2surgicalcourse.DoesNotExist:
         raise Http404
+    # Check if slide exists as a dzi file, if yes then serve and update activity
+    # DZI FILE PATH
+    dzi_file = os.path.join(OUTPUT_PATH, str(slide_id)+'.dzi')
+    if (os.path.exists(dzi_file)):
+        # Updating activity
+        try:
+            ac = Activity.objects.get(Slide_Id=s.id)
+            ac.Saved = True
+            ac.LastAccessed = datetime.datetime.utcnow()
+            ac.save()
+        except Activity.DoesNotExist:
+            ac = Activity(Slide_Id=s, Saved=True, LastAccessed=datetime.datetime.utcnow())
+            ac.save()
+
+        param = request.GET.get('url')
+        back_url = None
+        if param is not None:
+            try:
+                param_bytes = param.encode('ascii')
+                enc = base64.urlsafe_b64decode(param_bytes)
+                back_url = enc.decode('ascii')
+            except:
+                back_url = None
+            
+            if back_url is not None:
+                if re.match(regex, back_url) is None:
+                    back_url = None
+        return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations, 'cached': True})
+
+    # If slide does not exists, if slide type == 1, save
+    # Optimize disk space
+    _optimize_disk_space(slide_id)
+
+    # Load Back URL
     param = request.GET.get('url')
     back_url = None
+    if param is not None:
+        try:
+            param_bytes = param.encode('ascii')
+            enc = base64.urlsafe_b64decode(param_bytes)
+            back_url = enc.decode('ascii')
+        except:
+            back_url = None
+        
+        if back_url is not None:
+            if re.match(regex, back_url) is None:
+                back_url = None
+
+    
+    # If slide type is 1 then create dzi
     if s.SlideType == 1:
         if not os.path.exists(OUTPUT_PATH):
             os.mkdir(OUTPUT_PATH)
-        
         if not os.path.exists(OUTPUT_PATH+''+str(slide_id)+'.dzi'):
             SOURCE = str(s.UrlPath)
             # Create Deep Zoom Image creator with weird parameters
@@ -80,19 +172,22 @@ def slide(request, slide_id):
             # Create Deep Zoom image pyramid from source
             creator.create_dicom(SOURCE, OUTPUT_PATH+''+str(slide_id)+'.dzi')
 
-    if param is not None:
-        try:
-            param_bytes = param.encode('ascii')
-            enc = base64.urlsafe_b64decode(param_bytes)
-            back_url = enc.decode('ascii')
-        except:
-            back_url = None
-        
-        if back_url is not None:
-            if re.match(regex, back_url) is None:
-                back_url = None
-
-    return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations})
+    # Check if slide dzi is available
+    dzi_file = os.path.join(OUTPUT_PATH, str(slide_id)+'.dzi')
+    if not os.path.exists(dzi_file):
+        # check available disk space
+        if _get_free_space() < 12:
+            # check avilable RAM
+            if _get_free_ram() < 87:
+                return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations, 'cached': False})
+            else:
+                return render(request, 'server_busy.html')
+        else:
+            # save file as dzi
+            save_dzi(os.path.join(settings.HISTOSLIDE_SLIDEROOT, str(s.UrlPath)), OUTPUT_PATH, str(slide_id))
+    return render(request, 'frcpathp2surgicalcourse/slide.html', {'Slide': s, 'Label': request.build_absolute_uri('/static/labels/'+path.basename(s.LabelUrlPath.url)), 'back_url': back_url, 'annotations': s.Annotations, 'cached': True})
+    
+    
 
 
 def load_slide(slide_id, slidefile):
